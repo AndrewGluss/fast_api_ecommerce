@@ -1,4 +1,3 @@
-from decimal import Decimal
 from sqlalchemy import String, Boolean, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship  # New
 
