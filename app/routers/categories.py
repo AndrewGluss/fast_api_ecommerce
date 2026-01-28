@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 
 #from db_depends import get_async_db
 
+from app.auth import get_current_admin
 from app.models.categories import Category as CategoryModel
+from app.models.users import User as UserModel
 from app.schemas import Category as CategorySchema, CategoryCreate
 from app.db_depends import get_db
 
@@ -62,11 +64,16 @@ async def create_category(category: CategoryCreate, db: AsyncSession = Depends(g
 
 @router.post("/sync/", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
 #async def create_category(category: CategoryCreate, db: AsyncSession = Depends(get_async_db)):
-def create_category_sync(category: CategoryCreate, db: Session = Depends(get_db)):
+def create_category_sync(
+        category: CategoryCreate,
+        db: Session = Depends(get_db),
+        current_user: UserModel = Depends(get_current_admin)
+):
     """
     Создаёт новую категорию.
     """
     # Проверка существования parent_id, если указан
+
     if category.parent_id is not None:
         stmt = select(CategoryModel).where(CategoryModel.id == category.parent_id,
                                            CategoryModel.is_active == True)
@@ -76,7 +83,7 @@ def create_category_sync(category: CategoryCreate, db: Session = Depends(get_db)
             raise HTTPException(status_code=400, detail="Parent category not found")
 
     # Создание новой категории
-    db_category = CategoryModel(**category.model_dump())
+    db_category = CategoryModel(**category.model_dump(), admin_id=current_user.id)
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
@@ -121,7 +128,12 @@ async def update_category(category_id: int, category: CategoryCreate, db: AsyncS
 
 @router.put("/sync/{category_id}", response_model=CategorySchema)
 #async def update_category(category_id: int, category: CategoryCreate, db: AsyncSession = Depends(get_db)):
-def update_category_sync(category_id: int, category: CategoryCreate, db: Session = Depends(get_db)):
+def update_category_sync(
+        category_id: int,
+        category: CategoryCreate,
+        db: Session = Depends(get_db),
+        current_user: UserModel = Depends(get_current_admin)
+):
     """
     Обновляет категорию по её ID.
     """
@@ -131,6 +143,9 @@ def update_category_sync(category_id: int, category: CategoryCreate, db: Session
     db_category = db.scalars(stmt).first()
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
+
+    if db_category.admin_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You can only update your own categories")
 
     # Проверка существования parent_id, если указан
     if category.parent_id is not None:
@@ -155,7 +170,11 @@ def update_category_sync(category_id: int, category: CategoryCreate, db: Session
 
 @router.delete("/sync/{category_id}", status_code=status.HTTP_200_OK)
 #async def delete_category(category_id: int, db: AsyncSession = Depends(get_async_db)):
-def delete_category_sync(category_id: int, db: Session = Depends(get_db)):
+def delete_category_sync(
+        category_id: int,
+        db: Session = Depends(get_db),
+        current_user: UserModel = Depends(get_current_admin)
+):
     """
     Логически удаляет категорию по её ID, устанавливая is_active=False.
     """
@@ -164,6 +183,9 @@ def delete_category_sync(category_id: int, db: Session = Depends(get_db)):
     category = db.scalars(stmt).first()
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
+
+    if category.admin_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You can only delete your own categories")
 
     # Логическое удаление категории (установка is_active=False)
     db.execute(
