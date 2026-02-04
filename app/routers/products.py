@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 #from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +8,7 @@ from app.auth import get_current_seller
 from app.models.categories import Category as CategoryModel
 from app.models.products import Product as ProductModel
 from app.models.users import User as UserModel
+from app.models.reviews import Review as ReviewModel
 from app.schemas import Product as ProductSchema, ProductCreate
 from app.db_depends import get_db
 
@@ -57,7 +58,7 @@ def create_product_sync(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found or inactive")
 
     # Создание новой категории
-    db_product = ProductModel(**product.model_dump(), sellet_id=current_user.id)
+    db_product = ProductModel(**product.model_dump(), seller_id=current_user.id)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -271,3 +272,28 @@ async def delete_product(product_id: int, db: AsyncSession = Depends(get_async_d
     await db.commit()
 
     return {"status": "success", "message": "Product marked as inactive"}'''
+
+
+def update_product_rating(
+        #db: AsyncSession,
+        db: Session,
+        product_id: int
+):
+    """result = await db.execute(
+        select(func.avg(ReviewModel.grade)).where(
+            ReviewModel.product_id == product_id,
+            ReviewModel.is_active == True
+        )
+    )"""
+    result = db.execute(
+        select(func.avg(ReviewModel.grade)).where(
+            ReviewModel.product_id == product_id,
+            ReviewModel.is_active == True
+        )
+    )
+    avg_rating = result.scalar() or 0.0
+    #product = await db.get(ProductModel, product_id)
+    product = db.get(ProductModel, product_id)
+    product.rating = avg_rating
+    #await db.commit()
+    db.commit()

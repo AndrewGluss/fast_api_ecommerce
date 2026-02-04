@@ -54,6 +54,7 @@ class Product(BaseModel):
     image_url: str | None = Field(None, description="URL изображения товара")
     stock: int = Field(description="Количество товара на складе")
     category_id: int = Field(description="ID категории")
+    rating: float = Field("Рейтинг товара")
     is_active: bool = Field(description="Активность товара")
 
     model_config = ConfigDict(from_attributes=True)
