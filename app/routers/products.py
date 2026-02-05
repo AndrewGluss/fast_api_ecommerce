@@ -9,7 +9,7 @@ from app.models.categories import Category as CategoryModel
 from app.models.products import Product as ProductModel
 from app.models.users import User as UserModel
 from app.models.reviews import Review as ReviewModel
-from app.schemas import Product as ProductSchema, ProductCreate
+from app.schemas import Product as ProductSchema, ProductCreate, Review as ReviewSchema
 from app.db_depends import get_db
 
 
@@ -272,6 +272,24 @@ async def delete_product(product_id: int, db: AsyncSession = Depends(get_async_d
     await db.commit()
 
     return {"status": "success", "message": "Product marked as inactive"}'''
+
+@router.get("/{product_id}/reviews/", response_model=list[ReviewSchema])
+def get_all_reviews_by_product_id(
+        product_id: int,
+        db: Session = Depends(get_db)
+):
+    stmt = select(ProductModel).where(ProductModel.id == product_id, ProductModel.is_active == True)
+    product = db.scalars(stmt).first()
+
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+    reviews_stmt = select(ReviewModel).where(
+        ReviewModel.product_id == product_id, ReviewModel.is_active == True
+    )
+    reviews = db.scalars(reviews_stmt).all()
+
+    return reviews
 
 
 def update_product_rating(
