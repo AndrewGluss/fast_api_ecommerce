@@ -1,3 +1,5 @@
+from jwt import ExpiredSignatureError, InvalidSignatureError, InvalidAudienceError, InvalidIssuerError, \
+    InvalidAlgorithmError, DecodeError
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
@@ -9,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.users import User as UserModel
 from app.config import SECRET_KEY, ALGORITHM
-#from app.db_depends import get_async_db
+from app.db_depends import get_async_db
 from app.db_depends import get_db
 
 
@@ -57,9 +59,10 @@ def create_refresh_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme),
-                           db: Session = Depends(get_db)):
-                           #db: AsyncSession = Depends(get_async_db)):
+async def get_current_user(
+        token: str = Depends(oauth2_scheme),
+        db: AsyncSession = Depends(get_async_db)
+):
     """
     Проверяет JWT и возвращает пользователя из базы.
     """
@@ -84,7 +87,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme),
     #result = await db.scalars(
     #    select(UserModel).where(UserModel.email == email, UserModel.is_active == True))
     #user = result.first()
-    user = db.scalars(select(UserModel).where(UserModel.email == email, UserModel.is_active == True)).first()
+    user_db = await db.scalars(select(UserModel).where(
+        UserModel.email == email, UserModel.is_active == True)
+    )
+    user = user_db.first()
     if user is None:
         raise credentials_exception
     return user
