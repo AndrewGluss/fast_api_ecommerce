@@ -1,9 +1,9 @@
-from jwt import ExpiredSignatureError, InvalidSignatureError, InvalidAudienceError, InvalidIssuerError, \
-    InvalidAlgorithmError, DecodeError
+import jwt
+
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
-import jwt
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -84,9 +84,7 @@ async def get_current_user(
         )
     except jwt.PyJWTError:
         raise credentials_exception
-    #result = await db.scalars(
-    #    select(UserModel).where(UserModel.email == email, UserModel.is_active == True))
-    #user = result.first()
+
     user_db = await db.scalars(select(UserModel).where(
         UserModel.email == email, UserModel.is_active == True)
     )
