@@ -54,7 +54,7 @@ async def create_review(
 async def delete_review(
         review_id: int,
         db: AsyncSession = Depends(get_async_db),
-        current_user: UserModel = Depends(get_current_admin)
+        current_user: UserModel = Depends(get_current_user)
 ):
     """Удаление отзыва о продукте"""
 
@@ -64,7 +64,7 @@ async def delete_review(
     if review is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
-    if current_user.role != "admin":
+    if current_user.role != "admin" or current_user.id != review.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     await db.execute(update(ReviewModel).where(ReviewModel.id == review_id).values(is_active=False))
