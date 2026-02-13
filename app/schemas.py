@@ -73,12 +73,14 @@ class ProductList(BaseModel):
 
 
 class UserCreate(BaseModel):
+    """Модель для создания пользователя сервисы"""
     email: EmailStr = Field(description="Email пользователя")
     password: str = Field(min_length=8, description="Пароль (минимум 8 символов)")
     role: str = Field(default='buyer', pattern="^(admin|seller|buyer)$", description="Роль")
 
 
 class User(BaseModel):
+    """Модель пользователя сервисв"""
     id: int
     email: EmailStr
     is_active: bool
@@ -91,12 +93,14 @@ class RefreshTokenRequest(BaseModel):
 
 
 class ReviewCreate(BaseModel):
+    """Модель создания отзыва о товаре"""
     product_id: int = Field(description="Идентификатор продукта")
     comment: str | None = Field(description="Отзыв о продукте")
     grade: int = Field(description="Оценка", ge=1, le=5)
 
 
 class Review(BaseModel):
+    """Модель отзыва о товаре"""
     id: int
     user_id: int
     product_id: int
@@ -104,3 +108,39 @@ class Review(BaseModel):
     comment_date: datetime
     grade: int
     is_active: bool
+
+
+class CartItemBase(BaseModel):
+    """Базовая модель товара корзины"""
+    product_id: int = Field(description="ID товара")
+    quantity: int = Field(ge=1, description="Количество товара")
+
+
+
+class CartItemCreate(CartItemBase):
+    """Модель для добавления товара в корзину"""
+    pass
+
+
+class CartItemUpdate(BaseModel):
+    """Модель для обновления количества товара в корзине."""
+    quantity: int = Field(..., ge=1, description="Новое количество товара")
+
+
+class CartItem(BaseModel):
+    """Товар в корзине с данными продукта."""
+    id: int = Field(..., description="ID позиции корзины")
+    quantity: int = Field(..., ge=1, description="Количество товара")
+    product: Product = Field(..., description="Информация о товаре")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Cart(BaseModel):
+    """Полная информация о корзине пользователя."""
+    user_id: int = Field(..., description="ID пользователя")
+    items: list[CartItem] = Field(default_factory=list, description="Содержимое корзины")
+    total_quantity: int = Field(..., ge=0, description="Общее количество товаров")
+    total_price: Decimal = Field(..., ge=0, description="Общая стоимость товаров")
+
+    model_config = ConfigDict(from_attributes=True)
